@@ -1,10 +1,14 @@
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
 #include "compiler.h"
 
 int E();
 void STMT();
 void IF();
 void BLOCK();
+void DOWHILE();
 
 int tempIdx = 0, labelIdx = 0;
 
@@ -24,7 +28,6 @@ int isEnd() {
 }
 
 char *next() {
-  // printf("token[%d]=%s\n", tokenIdx, tokens[tokenIdx]);
   return tokens[tokenIdx++];
 }
 
@@ -73,8 +76,6 @@ int E() {
   return i1;
 }
 
-// FOR =  for (ASSIGN EXP; EXP) STMT
-
 // ASSIGN = id '=' E;
 void ASSIGN() {
   char *id = next();
@@ -99,7 +100,21 @@ void WHILE() {
   emit("(L%d)\n", whileEnd);
 }
 
-// if (EXP) STMT (else STMT)?
+// DOWHILE = do STMT while (E);
+void DOWHILE() {
+  int doBegin = nextLabel();
+  emit("(L%d)\n", doBegin);
+  skip("do");
+  STMT();
+  skip("while");
+  skip("(");
+  int e = E();
+  skip(")");
+  skip(";"); // 注意這裡的分號
+  emit("if T%d goto L%d\n", e, doBegin);
+}
+
+// IF = if (E) STMT (else STMT)?
 void IF() {
   skip("if");
   skip("(");
@@ -112,14 +127,12 @@ void IF() {
   }
 }
 
-// DOWHILE = do STMT while (E);
-
-// STMT = WHILE | BLOCK | IF | DOWHILE | ASSIGN
+// STMT = WHILE | DOWHILE | IF | BLOCK | ASSIGN
 void STMT() {
   if (isNext("while"))
     WHILE();
-  // else if (isNext("do"))
-  //  DOWHILE();
+  else if (isNext("do"))
+    DOWHILE();
   else if (isNext("if"))
     IF();
   else if (isNext("{"))
